@@ -53,7 +53,10 @@ export const asistenciaApi = {
       query.append('token', token);
     }
     
-    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    let baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+    if (baseUrl && !baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
+      baseUrl = `https://${baseUrl}`;
+    }
     return `${baseUrl}/api/exportar?${query.toString()}`;
   }
 };

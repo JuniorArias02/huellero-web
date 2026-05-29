@@ -1,4 +1,8 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+let API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+// Asegurar que la URL del backend siempre tenga protocolo para evitar rutas relativas en producción
+if (API_URL && !API_URL.startsWith('http://') && !API_URL.startsWith('https://')) {
+  API_URL = `https://${API_URL}`;
+}
 
 /**
  * Cliente HTTP unificado para interactuar con la API de PHP.
