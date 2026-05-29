@@ -1,16 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Save, Clock, Search, RotateCcw, AlertCircle, CheckCircle } from 'lucide-react';
+import { Settings, Save, Clock, Search, RotateCcw, AlertCircle, CheckCircle, Plus, Trash2, CalendarDays, UserCog, ChevronDown, ChevronUp } from 'lucide-react';
 import { asistenciaApi } from '../services/asistenciaApi';
 
-/**
- * Panel de Configuración para definir los horarios de entrada y salida (dos turnos) generales y específicos.
- */
+const DIAS = [
+  { id: 1, label: 'Lunes', short: 'L' },
+  { id: 2, label: 'Martes', short: 'M' },
+  { id: 3, label: 'Miércoles', short: 'X' },
+  { id: 4, label: 'Jueves', short: 'J' },
+  { id: 5, label: 'Viernes', short: 'V' },
+  { id: 6, label: 'Sábado', short: 'S' },
+  { id: 7, label: 'Domingo', short: 'D' },
+];
+
+const generateId = () => Math.random().toString(36).substr(2, 9);
+
 export function ConfiguracionPanel({ onConfigSaved }) {
   const [generalConfig, setGeneralConfig] = useState({
-    hora_entrada_m_defecto: '07:30',
-    hora_salida_m_defecto: '11:30',
-    hora_entrada_t_defecto: '14:00',
-    hora_salida_t_defecto: '18:00',
+    jornadas: [],
     tolerancia_minutos: 20,
   });
   const [empleados, setEmpleados] = useState([]);
@@ -19,367 +25,318 @@ export function ConfiguracionPanel({ onConfigSaved }) {
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
   const [filtroBusqueda, setFiltroBusqueda] = useState('');
+  const [expandedEmp, setExpandedEmp] = useState(null);
 
-  // Cargar configuración actual al montar el componente
   const cargarConfiguracion = async () => {
-    setLoading(true);
-    setError(null);
+    setLoading(true); setError(null);
     try {
       const data = await asistenciaApi.obtenerConfiguracion();
       setGeneralConfig({
-        hora_entrada_m_defecto: data.hora_entrada_m_defecto || '07:30',
-        hora_salida_m_defecto: data.hora_salida_m_defecto || '11:30',
-        hora_entrada_t_defecto: data.hora_entrada_t_defecto || '14:00',
-        hora_salida_t_defecto: data.hora_salida_t_defecto || '18:00',
+        jornadas: data.jornadas || [],
         tolerancia_minutos: Number(data.tolerancia_minutos) ?? 20,
       });
       setEmpleados(data.empleados || []);
     } catch (err) {
-      setError(err.message || 'Error al cargar la configuración de asistencia.');
+      setError(err.message || 'Error al cargar la configuración.');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    cargarConfiguracion();
-  }, []);
-
-  const handleGeneralChange = (e) => {
-    const { name, value } = e.target;
-    setGeneralConfig((prev) => ({
-      ...prev,
-      [name]: name === 'tolerancia_minutos' ? Number(value) : value,
-    }));
-  };
-
-  const handleEmpleadoHoraChange = (employeeNo, campo, horaVal) => {
-    setEmpleados((prev) =>
-      prev.map((emp) =>
-        emp.employeeNo === employeeNo ? { ...emp, [campo]: horaVal } : emp
-      )
-    );
-  };
-
-  const handleRestablecerEmpleado = (employeeNo) => {
-    setEmpleados((prev) =>
-      prev.map((emp) =>
-        emp.employeeNo === employeeNo
-          ? { ...emp, horaEntradaM: '', horaSalidaM: '', horaEntradaT: '', horaSalidaT: '' }
-          : emp
-      )
-    );
-  };
+  useEffect(() => { cargarConfiguracion(); }, []);
 
   const handleGuardar = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-    setError(null);
-    setSuccessMsg(null);
+    if (e) e.preventDefault();
+    setSaving(true); setError(null); setSuccessMsg(null);
     try {
       const payload = {
         ...generalConfig,
         empleados: empleados.map((emp) => ({
           employeeNo: emp.employeeNo,
           nombre: emp.nombre,
-          horaEntradaM: emp.horaEntradaM || '',
-          horaSalidaM: emp.horaSalidaM || '',
-          horaEntradaT: emp.horaEntradaT || '',
-          horaSalidaT: emp.horaSalidaT || '',
+          jornadas: emp.jornadas
         })),
       };
       await asistenciaApi.guardarConfiguracion(payload);
-      setSuccessMsg('¡Configuración guardada correctamente!');
-      if (onConfigSaved) {
-        onConfigSaved();
-      }
+      setSuccessMsg('¡Configuración de motor de horarios actualizada con éxito!');
+      if (onConfigSaved) onConfigSaved();
       setTimeout(() => setSuccessMsg(null), 4000);
     } catch (err) {
-      setError(err.message || 'Error al guardar la configuración.');
+      setError(err.message || 'Error al guardar.');
     } finally {
       setSaving(false);
     }
   };
 
-  // Filtrar empleados por búsqueda en tiempo real
-  const empleadosFiltrados = empleados.filter(
-    (emp) =>
-      (emp.nombre || '').toLowerCase().includes(filtroBusqueda.toLowerCase()) ||
-      (emp.employeeNo || '').includes(filtroBusqueda)
+  const addJornada = (target, empId = null) => {
+    const newJornada = { id: generateId(), nombre: 'Nuevo Turno', entrada: '08:00', salida: '17:00', activa: true, dias: [1,2,3,4,5,6] };
+    if (target === 'global') {
+      setGeneralConfig(p => ({ ...p, jornadas: [...p.jornadas, newJornada] }));
+    } else {
+      setEmpleados(p => p.map(e => e.employeeNo === empId ? { ...e, jornadas: [...(e.jornadas || []), newJornada] } : e));
+    }
+  };
+
+  const removeJornada = (target, idJornada, empId = null) => {
+    if (target === 'global') {
+      setGeneralConfig(p => ({ ...p, jornadas: p.jornadas.filter(j => j.id !== idJornada) }));
+    } else {
+      setEmpleados(p => p.map(e => e.employeeNo === empId ? { ...e, jornadas: e.jornadas.filter(j => j.id !== idJornada) } : e));
+    }
+  };
+
+  const updateJornada = (target, idJornada, field, value, empId = null) => {
+    if (target === 'global') {
+      setGeneralConfig(p => ({ ...p, jornadas: p.jornadas.map(j => j.id === idJornada ? { ...j, [field]: value } : j) }));
+    } else {
+      setEmpleados(p => p.map(e => e.employeeNo === empId ? { ...e, jornadas: e.jornadas.map(j => j.id === idJornada ? { ...j, [field]: value } : j) } : e));
+    }
+  };
+
+  const toggleDiaEnJornada = (target, idJornada, diaId, empId = null) => {
+    const toggleArray = (arr) => {
+      const active = arr || [1,2,3,4,5,6];
+      const res = active.includes(diaId) ? active.filter(x => x !== diaId) : [...active, diaId];
+      return res.sort();
+    };
+
+    if (target === 'global') {
+      setGeneralConfig(p => ({
+        ...p,
+        jornadas: p.jornadas.map(j => j.id === idJornada ? { ...j, dias: toggleArray(j.dias) } : j)
+      }));
+    } else {
+      setEmpleados(p => p.map(e => {
+        if (e.employeeNo === empId) {
+          return { ...e, jornadas: e.jornadas.map(j => j.id === idJornada ? { ...j, dias: toggleArray(j.dias) } : j) };
+        }
+        return e;
+      }));
+    }
+  };
+
+  const togglePersonalizacionEmp = (emp) => {
+    setEmpleados(p => p.map(e => {
+      if (e.employeeNo === emp.employeeNo) {
+        if (e.jornadas) {
+          return { ...e, jornadas: null };
+        } else {
+          return { ...e, jornadas: JSON.parse(JSON.stringify(generalConfig.jornadas)) };
+        }
+      }
+      return e;
+    }));
+    if (expandedEmp !== emp.employeeNo) setExpandedEmp(emp.employeeNo);
+  };
+
+  const empleadosFiltrados = empleados.filter(emp => 
+    (emp.nombre || '').toLowerCase().includes(filtroBusqueda.toLowerCase()) || 
+    (emp.employeeNo || '').includes(filtroBusqueda)
+  );
+
+  const renderJornadasBuilder = (target, jornadasList, empId = null) => (
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+        {jornadasList.map(jor => (
+          <div key={jor.id} className={`bg-black/30 border rounded-3xl p-5 transition-all flex flex-col gap-5 ${jor.activa ? 'border-indigo-500/40 shadow-[0_0_30px_rgba(79,70,229,0.15)]' : 'border-white/5 opacity-50'}`}>
+            <div className="flex justify-between items-center">
+              <input 
+                type="text" value={jor.nombre} 
+                onChange={(e) => updateJornada(target, jor.id, 'nombre', e.target.value, empId)}
+                className="bg-transparent text-white font-extrabold text-xl focus:outline-none focus:border-b focus:border-indigo-500/50 w-[150px]"
+              />
+              <div className="flex gap-2">
+                <button type="button" onClick={() => updateJornada(target, jor.id, 'activa', !jor.activa, empId)} className={`px-3 py-1.5 text-[10px] uppercase font-bold rounded-lg border ${jor.activa ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-slate-500/10 border-slate-500/30 text-slate-400'}`}>
+                  {jor.activa ? 'Activa' : 'Inactiva'}
+                </button>
+                <button type="button" onClick={() => removeJornada(target, jor.id, empId)} className="p-2 bg-rose-500/10 text-rose-400 rounded-lg hover:bg-rose-500/20">
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            </div>
+            
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Hora Entrada</label>
+                <input type="time" value={jor.entrada} onChange={(e) => updateJornada(target, jor.id, 'entrada', e.target.value, empId)} className="w-full bg-black/40 border border-white/10 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500/50 [&::-webkit-calendar-picker-indicator]:invert" />
+              </div>
+              <div className="flex-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-1">Hora Salida</label>
+                <input type="time" value={jor.salida} onChange={(e) => updateJornada(target, jor.id, 'salida', e.target.value, empId)} className="w-full bg-black/40 border border-white/10 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500/50 [&::-webkit-calendar-picker-indicator]:invert" />
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-white/5">
+              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Días que aplica este turno</label>
+              <div className="flex flex-wrap gap-1.5">
+                {DIAS.map(d => {
+                  const isSelected = (jor.dias || [1,2,3,4,5,6]).includes(d.id);
+                  return (
+                    <button
+                      key={d.id} type="button"
+                      onClick={() => toggleDiaEnJornada(target, jor.id, d.id, empId)}
+                      className={`w-9 h-9 flex items-center justify-center rounded-xl font-bold text-xs transition-all duration-300 ${
+                        isSelected 
+                          ? 'bg-blue-500/20 text-blue-400 border border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.3)]' 
+                          : 'bg-black/30 text-slate-500 border border-white/5 hover:bg-white/5'
+                      }`}
+                    >
+                      {d.short}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        ))}
+        <button type="button" onClick={() => addJornada(target, empId)} className="bg-white/5 border border-white/10 border-dashed rounded-3xl p-5 flex flex-col items-center justify-center text-slate-400 hover:bg-white/10 hover:text-white transition-all min-h-[220px] cursor-pointer">
+          <Plus size={36} className="mb-3" />
+          <span className="text-sm font-bold">Crear Nuevo Turno</span>
+        </button>
+      </div>
+    </div>
   );
 
   return (
-    <div className="card-sync" style={{ maxWidth: '950px', width: '100%', margin: '0 auto 3rem auto' }}>
-      <div className="card-sync-header" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-        <Settings size={28} style={{ color: 'var(--primary)' }} />
+    <div className="relative bg-[#0a0f1d]/80 border border-white/[0.04] backdrop-blur-2xl p-8 md:p-12 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] w-full z-10 mb-12">
+      <div className="flex items-center gap-4 mb-10">
+        <div className="p-3 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-2xl border border-indigo-500/20 text-indigo-400">
+          <Settings size={32} />
+        </div>
         <div>
-          <h2>Configuración de Asistencia</h2>
-          <p className="card-subtitle">Establezca los horarios de entrada, salida y tolerancias para cada jornada de trabajo</p>
+          <h2 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-slate-400 tracking-tight mb-1">
+            Motor de Horarios Inteligente
+          </h2>
+          <p className="text-slate-400 text-sm font-medium">Configura múltiples turnos y asigna los días específicos para cada uno.</p>
         </div>
       </div>
 
       {loading ? (
-        <div className="text-center py-5">
-          <div className="spinner"></div>
-          <p className="mt-2 text-muted">Cargando parámetros de asistencia...</p>
+        <div className="py-20 text-center">
+          <div className="w-12 h-12 border-4 border-white/5 border-t-indigo-500 rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-400 font-bold">Cargando motor de horarios...</p>
         </div>
       ) : (
-        <form onSubmit={handleGuardar} className="sync-form">
-          {/* Configuración General (2 Turnos + Tolerancia) */}
-          <div className="sync-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '1rem' }}>
-            <div className="form-group">
-              <label>Entrada Mañana (Defecto)</label>
-              <div className="input-with-icon">
-                <Clock size={14} className="input-icon" />
-                <input
-                  type="time"
-                  name="hora_entrada_m_defecto"
-                  value={generalConfig.hora_entrada_m_defecto}
-                  onChange={handleGeneralChange}
-                  required
-                  className="sync-input"
-                  style={{ paddingLeft: '2.5rem' }}
-                />
+        <div className="flex flex-col gap-10">
+          
+          {/* Configuración Global */}
+          <div className="bg-black/20 p-8 rounded-[2rem] border border-white/[0.05] relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none"><CalendarDays size={120} /></div>
+            
+            <div className="flex flex-wrap justify-between items-center mb-8">
+              <h3 className="text-xl font-extrabold text-white flex items-center gap-3">
+                <CalendarDays size={24} className="text-indigo-400" />
+                Jornadas Globales (Por Defecto)
+              </h3>
+              <div className="flex items-center gap-3 bg-black/40 px-4 py-2 rounded-xl border border-white/5">
+                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Tolerancia Global</label>
+                <div className="flex items-center gap-2">
+                  <input type="number" value={generalConfig.tolerancia_minutos} onChange={(e) => setGeneralConfig(p => ({...p, tolerancia_minutos: Number(e.target.value)}))} className="w-16 bg-transparent text-white text-center font-bold focus:outline-none border-b border-indigo-500/50" />
+                  <span className="text-xs font-bold text-slate-500">Min</span>
+                </div>
               </div>
             </div>
-
-            <div className="form-group">
-              <label>Salida Mañana (Defecto)</label>
-              <div className="input-with-icon">
-                <Clock size={14} className="input-icon" />
-                <input
-                  type="time"
-                  name="hora_salida_m_defecto"
-                  value={generalConfig.hora_salida_m_defecto}
-                  onChange={handleGeneralChange}
-                  required
-                  className="sync-input"
-                  style={{ paddingLeft: '2.5rem' }}
-                />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label>Entrada Tarde (Defecto)</label>
-              <div className="input-with-icon">
-                <Clock size={14} className="input-icon" />
-                <input
-                  type="time"
-                  name="hora_entrada_t_defecto"
-                  value={generalConfig.hora_entrada_t_defecto}
-                  onChange={handleGeneralChange}
-                  required
-                  className="sync-input"
-                  style={{ paddingLeft: '2.5rem' }}
-                />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label>Salida Tarde (Defecto)</label>
-              <div className="input-with-icon">
-                <Clock size={14} className="input-icon" />
-                <input
-                  type="time"
-                  name="hora_salida_t_defecto"
-                  value={generalConfig.hora_salida_t_defecto}
-                  onChange={handleGeneralChange}
-                  required
-                  className="sync-input"
-                  style={{ paddingLeft: '2.5rem' }}
-                />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label>Tolerancia (Minutos)</label>
-              <input
-                type="number"
-                name="tolerancia_minutos"
-                min="0"
-                max="120"
-                value={generalConfig.tolerancia_minutos}
-                onChange={handleGeneralChange}
-                required
-                className="sync-input"
-              />
-            </div>
+            
+            {renderJornadasBuilder('global', generalConfig.jornadas)}
           </div>
 
-          {/* Sección de excepciones de horarios por empleado */}
-          <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
+          {/* Excepciones de Empleados */}
+          <div>
+            <div className="flex flex-wrap justify-between items-end gap-4 mb-6">
               <div>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)' }}>Personalizaciones de Horario por Empleado</h3>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Escriba un horario específico para sobrescribir los valores generales si corresponde.</p>
+                <h3 className="text-xl font-extrabold text-white flex items-center gap-2 mb-1">
+                  <UserCog size={22} className="text-purple-400" />
+                  Personalización por Empleado
+                </h3>
+                <p className="text-sm text-slate-400">Si un empleado tiene horarios especiales, configúralos aquí.</p>
               </div>
-              
-              {/* Buscador reactivo */}
-              <div className="input-with-icon" style={{ maxWidth: '280px' }}>
-                <Search size={16} className="input-icon" />
-                <input
-                  type="text"
-                  placeholder="Buscar empleado por nombre/ID..."
-                  value={filtroBusqueda}
-                  onChange={(e) => setFiltroBusqueda(e.target.value)}
-                  className="filter-input filter-search"
-                  style={{ background: 'rgba(255, 255, 255, 0.03)', borderRadius: '0.5rem' }}
-                />
+              <div className="relative w-full max-w-[350px]">
+                <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input type="text" placeholder="Buscar empleado..." value={filtroBusqueda} onChange={(e) => setFiltroBusqueda(e.target.value)} className="w-full bg-white/5 border border-white/10 text-white rounded-xl px-12 py-3 focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all" />
               </div>
             </div>
 
-            {/* Listado de empleados */}
-            <div style={{ maxHeight: '350px', overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: '0.75rem', background: 'rgba(0, 0, 0, 0.15)' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
-                <thead>
-                  <tr style={{ background: 'rgba(255, 255, 255, 0.02)', borderBottom: '1px solid var(--border-color)' }}>
-                    <th style={{ padding: '0.75rem 0.5rem', color: 'var(--text-secondary)' }}>ID</th>
-                    <th style={{ padding: '0.75rem 0.5rem', color: 'var(--text-secondary)' }}>Nombre</th>
-                    <th style={{ padding: '0.75rem 0.5rem', color: 'var(--text-secondary)' }}>Entrada M.</th>
-                    <th style={{ padding: '0.75rem 0.5rem', color: 'var(--text-secondary)' }}>Salida M.</th>
-                    <th style={{ padding: '0.75rem 0.5rem', color: 'var(--text-secondary)' }}>Entrada T.</th>
-                    <th style={{ padding: '0.75rem 0.5rem', color: 'var(--text-secondary)' }}>Salida T.</th>
-                    <th style={{ padding: '0.75rem 0.5rem', color: 'var(--text-secondary)', textAlign: 'center' }}>Acción</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {empleadosFiltrados.length === 0 ? (
+            <div className="border border-white/5 bg-black/20 rounded-[2rem] overflow-hidden">
+              <div className="overflow-x-auto custom-scrollbar max-h-[600px]">
+                <table className="w-full text-left border-collapse text-sm text-slate-300">
+                  <thead className="bg-[#0a0f1d]/95 sticky top-0 z-20 backdrop-blur-md">
                     <tr>
-                      <td colSpan="7" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-                        No se encontraron empleados en el sistema.
-                      </td>
+                      <th className="px-6 py-5 text-[10px] font-extrabold text-slate-500 uppercase tracking-widest border-b border-white/5">ID Empleado</th>
+                      <th className="px-6 py-5 text-[10px] font-extrabold text-slate-500 uppercase tracking-widest border-b border-white/5">Nombre</th>
+                      <th className="px-6 py-5 text-[10px] font-extrabold text-slate-500 uppercase tracking-widest border-b border-white/5">Estado de Reglas</th>
+                      <th className="px-6 py-5 text-[10px] font-extrabold text-slate-500 uppercase tracking-widest border-b border-white/5 text-right">Acciones</th>
                     </tr>
-                  ) : (
-                    empleadosFiltrados.map((emp) => {
-                      const hasCustom = emp.horaEntradaM || emp.horaSalidaM || emp.horaEntradaT || emp.horaSalidaT;
-                      return (
-                        <tr key={emp.employeeNo} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.03)' }}>
-                          <td style={{ padding: '0.5rem', fontFamily: 'var(--font-mono)', color: '#93c5fd' }}>{emp.employeeNo}</td>
-                          <td style={{ padding: '0.5rem', fontWeight: 600 }}>{emp.nombre}</td>
-                          <td style={{ padding: '0.5rem' }}>
-                            <input
-                              type="time"
-                              value={emp.horaEntradaM || ''}
-                              onChange={(e) => handleEmpleadoHoraChange(emp.employeeNo, 'horaEntradaM', e.target.value)}
-                              className="sync-input"
-                              style={{ 
-                                padding: '0.35rem 0.5rem', 
-                                fontSize: '0.8rem', 
-                                width: '90px', 
-                                background: emp.horaEntradaM ? 'rgba(139, 92, 246, 0.1)' : 'rgba(10, 15, 29, 0.6)',
-                                borderColor: emp.horaEntradaM ? 'rgba(139, 92, 246, 0.3)' : 'var(--border-color)'
-                              }}
-                            />
-                          </td>
-                          <td style={{ padding: '0.5rem' }}>
-                            <input
-                              type="time"
-                              value={emp.horaSalidaM || ''}
-                              onChange={(e) => handleEmpleadoHoraChange(emp.employeeNo, 'horaSalidaM', e.target.value)}
-                              className="sync-input"
-                              style={{ 
-                                padding: '0.35rem 0.5rem', 
-                                fontSize: '0.8rem', 
-                                width: '90px', 
-                                background: emp.horaSalidaM ? 'rgba(139, 92, 246, 0.1)' : 'rgba(10, 15, 29, 0.6)',
-                                borderColor: emp.horaSalidaM ? 'rgba(139, 92, 246, 0.3)' : 'var(--border-color)'
-                              }}
-                            />
-                          </td>
-                          <td style={{ padding: '0.5rem' }}>
-                            <input
-                              type="time"
-                              value={emp.horaEntradaT || ''}
-                              onChange={(e) => handleEmpleadoHoraChange(emp.employeeNo, 'horaEntradaT', e.target.value)}
-                              className="sync-input"
-                              style={{ 
-                                padding: '0.35rem 0.5rem', 
-                                fontSize: '0.8rem', 
-                                width: '90px', 
-                                background: emp.horaEntradaT ? 'rgba(139, 92, 246, 0.1)' : 'rgba(10, 15, 29, 0.6)',
-                                borderColor: emp.horaEntradaT ? 'rgba(139, 92, 246, 0.3)' : 'var(--border-color)'
-                              }}
-                            />
-                          </td>
-                          <td style={{ padding: '0.5rem' }}>
-                            <input
-                              type="time"
-                              value={emp.horaSalidaT || ''}
-                              onChange={(e) => handleEmpleadoHoraChange(emp.employeeNo, 'horaSalidaT', e.target.value)}
-                              className="sync-input"
-                              style={{ 
-                                padding: '0.35rem 0.5rem', 
-                                fontSize: '0.8rem', 
-                                width: '90px', 
-                                background: emp.horaSalidaT ? 'rgba(139, 92, 246, 0.1)' : 'rgba(10, 15, 29, 0.6)',
-                                borderColor: emp.horaSalidaT ? 'rgba(139, 92, 246, 0.3)' : 'var(--border-color)'
-                              }}
-                            />
-                          </td>
-                          <td style={{ padding: '0.5rem', textAlign: 'center' }}>
-                            <button
-                              type="button"
-                              onClick={() => handleRestablecerEmpleado(emp.employeeNo)}
-                              disabled={!hasCustom}
-                              className="btn btn-secondary"
-                              style={{ padding: '0.35rem', borderRadius: '0.4rem', border: 'none', opacity: hasCustom ? 1 : 0.4 }}
-                              title="Restablecer todas las celdas al horario general de la empresa"
-                            >
-                              <RotateCcw size={14} />
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.02]">
+                    {empleadosFiltrados.length === 0 ? (
+                      <tr><td colSpan="4" className="px-6 py-12 text-center text-slate-500 font-bold">No se encontraron empleados.</td></tr>
+                    ) : (
+                      empleadosFiltrados.map((emp) => {
+                        const hasCustom = emp.jornadas !== null && emp.jornadas !== undefined;
+                        const isExpanded = expandedEmp === emp.employeeNo;
+                        
+                        return (
+                          <React.Fragment key={emp.employeeNo}>
+                            <tr className={`hover:bg-white/[0.02] transition-colors ${isExpanded ? 'bg-white/[0.03]' : ''}`}>
+                              <td className="px-6 py-4 font-mono text-xs text-purple-400">{emp.employeeNo}</td>
+                              <td className="px-6 py-4 font-bold text-white">{emp.nombre}</td>
+                              <td className="px-6 py-4">
+                                {hasCustom ? (
+                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-extrabold uppercase tracking-widest">
+                                    Personalizado
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-500/10 text-slate-400 border border-slate-500/20 text-[10px] font-extrabold uppercase tracking-widest">
+                                    Global
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                <div className="flex justify-end gap-2">
+                                  <button onClick={() => togglePersonalizacionEmp(emp)} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${hasCustom ? 'bg-rose-500/10 border-rose-500/30 text-rose-400 hover:bg-rose-500/20' : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'}`}>
+                                    {hasCustom ? 'Remover' : 'Personalizar'}
+                                  </button>
+                                  {hasCustom && (
+                                    <button onClick={() => setExpandedEmp(isExpanded ? null : emp.employeeNo)} className="p-2 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/30 hover:bg-purple-500/20">
+                                      {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                            
+                            {/* Panel Expansible Full Width para Edición de Empleado */}
+                            {isExpanded && hasCustom && (
+                              <tr className="bg-black/40 border-b border-white/5">
+                                <td colSpan="4" className="p-0">
+                                  <div className="p-8 border-l-4 border-purple-500 animate-fade-in">
+                                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 text-purple-300/80">Jornadas Exclusivas de {emp.nombre}</label>
+                                    {renderJornadasBuilder('emp', emp.jornadas || [], emp.employeeNo)}
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 
-          {/* Feedback visual de errores o éxito */}
-          {error && (
-            <div className="alert-box alert-danger">
-              <AlertCircle size={18} style={{ flexShrink: 0 }} />
-              <div className="alert-content">
-                <p className="alert-title">Fallo al Guardar</p>
-                <p className="alert-msg">{error}</p>
-              </div>
+          <div className="flex flex-wrap items-center justify-between gap-4 pt-6 border-t border-white/10 sticky bottom-0 bg-[#0a0f1d]/90 backdrop-blur-xl p-4 rounded-3xl z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
+            <div className="flex-1">
+              {error && <div className="flex items-center gap-3 px-4 py-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-400 animate-fade-in w-fit"><AlertCircle size={18} /><span className="text-sm font-bold">{error}</span></div>}
+              {successMsg && <div className="flex items-center gap-3 px-4 py-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 animate-fade-in w-fit"><CheckCircle size={18} /><span className="text-sm font-bold">{successMsg}</span></div>}
             </div>
-          )}
 
-          {successMsg && (
-            <div className="alert-box alert-success">
-              <CheckCircle size={18} style={{ flexShrink: 0 }} />
-              <div className="alert-content">
-                <p className="alert-title">Cambios Guardados</p>
-                <p className="alert-msg">{successMsg}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Botón de guardado */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
-            <button
-              type="submit"
-              disabled={saving}
-              className="btn btn-primary"
-              style={{ minWidth: '185px' }}
-            >
-              {saving ? (
-                <>
-                  <div className="spinner" style={{ width: '16px', height: '16px', borderWidth: '2px' }}></div>
-                  <span>Guardando...</span>
-                </>
-              ) : (
-                <>
-                  <Save size={18} />
-                  <span>Guardar Parámetros</span>
-                </>
-              )}
+            <button onClick={handleGuardar} disabled={saving} className={`inline-flex items-center justify-center gap-2 px-10 py-4 rounded-2xl font-extrabold text-sm transition-all duration-300 min-w-[220px] ${saving ? 'bg-indigo-600/50 text-indigo-200 cursor-not-allowed' : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-[0_0_30px_rgba(79,70,229,0.4)] hover:-translate-y-1 hover:shadow-[0_15px_40px_rgba(79,70,229,0.6)] cursor-pointer'}`}>
+              {saving ? <><div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" /> Guardando...</> : <><Save size={18} /> Aplicar Cambios Globales</>}
             </button>
           </div>
-        </form>
+        </div>
       )}
     </div>
   );

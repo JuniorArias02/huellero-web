@@ -70,8 +70,13 @@ export function useAsistencias() {
   const metricas = useMemo(() => {
     const total = asistencias.length;
     
-    // Obtener número de empleados únicos
-    const empleadosUnicos = new Set(asistencias.map(a => a.employeeNo).filter(Boolean)).size;
+    // Obtener número de empleados únicos (ignorando registros sin ID)
+    const empleadosSet = new Set();
+    asistencias.forEach(a => { if (a.employeeNo) empleadosSet.add(a.employeeNo); });
+    const empleadosUnicos = empleadosSet.size;
+    
+    // Obtener nombre del empleado (si es reporte individual)
+    const nombreEmpleado = empleadosUnicos === 1 ? asistencias.find(a => a.employeeNo)?.nombre : null;
 
     // Conteo de modos de verificación y métricas de puntualidad
     let huellas = 0;
@@ -88,6 +93,8 @@ export function useAsistencias() {
     let salidasHorasExtras = 0;
     let totalHorasExtrasMinutos = 0;
     let totalSalidaTempranaMinutos = 0;
+    
+    let faltas = 0;
 
     asistencias.forEach((a) => {
       const modo = (a.modoVerificacion || '').toLowerCase();
@@ -97,11 +104,13 @@ export function useAsistencias() {
         rostros++;
       } else if (modo.includes('card') || modo.includes('tarjeta')) {
         tarjetas++;
-      } else {
+      } else if (modo !== 'ninguno') {
         otros++;
       }
 
-      if (a.tipoRegistro === 'Entrada Mañana' || a.tipoRegistro === 'Entrada Tarde' || a.tipoRegistro === 'Entrada') {
+      if (a.tipoRegistro === 'Inasistencia') {
+        faltas++;
+      } else if (a.tipoRegistro.startsWith('Entrada')) {
         totalEntradas++;
         if (a.estado === 'Tarde') {
           entradasTarde++;
@@ -109,7 +118,7 @@ export function useAsistencias() {
         } else if (a.estado === 'A tiempo') {
           entradasATiempo++;
         }
-      } else if (a.tipoRegistro === 'Salida Mañana' || a.tipoRegistro === 'Salida Tarde' || a.tipoRegistro === 'Salida') {
+      } else if (a.tipoRegistro.startsWith('Salida')) {
         totalSalidas++;
         if (a.estado === 'Salida Temprana') {
           salidasTempranas++;
@@ -124,12 +133,8 @@ export function useAsistencias() {
     return {
       total,
       empleadosUnicos,
-      modos: {
-        huellas,
-        rostros,
-        tarjetas,
-        otros
-      },
+      nombreEmpleado,
+      modos: { huellas, rostros, tarjetas, otros },
       puntualidad: {
         totalEntradas,
         entradasATiempo,
@@ -140,7 +145,8 @@ export function useAsistencias() {
         salidasTempranas,
         salidasHorasExtras,
         totalHorasExtrasMinutos,
-        totalSalidaTempranaMinutos
+        totalSalidaTempranaMinutos,
+        faltas
       }
     };
   }, [asistencias]);
