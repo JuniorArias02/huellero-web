@@ -86,7 +86,7 @@ export default function App() {
           <div className="top-nav-bar">
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Fingerprint size={24} style={{ color: 'var(--primary)' }} />
-              <span style={{ fontWeight: 'bold', fontSize: '1rem', letterSpacing: '0.5px' }}>Asistencia S.A.S</span>
+              <span style={{ fontWeight: 'bold', fontSize: '1rem', letterSpacing: '0.5px' }}>IPS CLINICAL HOUSE</span>
             </div>
             <div className="top-nav-profile">
               <div className="top-nav-user-info">
@@ -105,7 +105,7 @@ export default function App() {
           <header className="slide-header">
             <div className="welcome-badge">
               <Sparkles size={14} />
-              <span>Sistema de Control de Asistencia S.A.S</span>
+              <span>Sistema de Control de Asistencia IPS CLINICAL HOUSE</span>
             </div>
             <h1>Panel de Control y Monitoreo</h1>
             <p>Visualización en tiempo real de accesos y registros del personal</p>
@@ -159,7 +159,7 @@ export default function App() {
           <div className="top-nav-bar">
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Fingerprint size={24} style={{ color: 'var(--primary)' }} />
-              <span style={{ fontWeight: 'bold', fontSize: '1rem', letterSpacing: '0.5px' }}>Asistencia S.A.S</span>
+              <span style={{ fontWeight: 'bold', fontSize: '1rem', letterSpacing: '0.5px' }}>IPS CLINICAL HOUSE</span>
             </div>
             <div className="top-nav-profile">
               <div className="top-nav-user-info">
@@ -207,7 +207,7 @@ export default function App() {
           <div className="top-nav-bar">
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Fingerprint size={24} style={{ color: 'var(--primary)' }} />
-              <span style={{ fontWeight: 'bold', fontSize: '1rem', letterSpacing: '0.5px' }}>Asistencia S.A.S</span>
+              <span style={{ fontWeight: 'bold', fontSize: '1rem', letterSpacing: '0.5px' }}>IPS CLINICAL HOUSE</span>
             </div>
             <div className="top-nav-profile">
               <div className="top-nav-user-info">
