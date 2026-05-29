@@ -46,7 +46,7 @@ export function Login({ onLoginSuccess }) {
           </div>
           <div className="welcome-badge" style={{ margin: '1rem auto 0.5rem auto' }}>
             <Sparkles size={12} />
-            <span>Sistema de Control de Asistencia S.A.S</span>
+            <span>Control de Asistencia</span>
           </div>
           <h2>Iniciar Sesión</h2>
           <p>Ingrese sus credenciales de administrador para continuar</p>
