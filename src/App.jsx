@@ -4,8 +4,9 @@ import { PanelMetricas } from './features/asistencia/components/PanelMetricas';
 import { FiltrosBusqueda } from './features/asistencia/components/FiltrosBusqueda';
 import { TablaAsistencia } from './features/asistencia/components/TablaAsistencia';
 import { Sincronizador } from './features/asistencia/components/Sincronizador';
+import { ConfiguracionPanel } from './features/asistencia/components/ConfiguracionPanel';
 import { Login } from './features/auth/components/Login';
-import { Fingerprint, Database, Sparkles, RefreshCw, LayoutDashboard } from 'lucide-react';
+import { Fingerprint, Database, Sparkles, RefreshCw, LayoutDashboard, Settings } from 'lucide-react';
 
 /**
  * Componente Raíz de la Aplicación.
@@ -47,7 +48,8 @@ export default function App() {
   const slides = [
     { id: 0, label: 'Dashboard', tooltip: 'Panel de Control', icon: <LayoutDashboard size={14} /> },
     { id: 1, label: 'Registros', tooltip: 'Historial de Marcas', icon: <Database size={14} /> },
-    { id: 2, label: 'Sincronizar', tooltip: 'Importar Biométrico', icon: <RefreshCw size={14} /> }
+    { id: 2, label: 'Sincronizar', tooltip: 'Importar Biométrico', icon: <RefreshCw size={14} /> },
+    { id: 3, label: 'Configuración', tooltip: 'Parámetros del Sistema', icon: <Settings size={14} /> }
   ];
 
   // Si no está autenticado, renderizar la pantalla de Login
@@ -123,14 +125,18 @@ export default function App() {
                 Centraliza la información de asistencia para la generación de reportes detallados y su exportación directa a formato Excel (.xlsx).
               </p>
               
-              <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginTop: '1.5rem' }}>
                 <button className="btn btn-primary" onClick={() => setActiveSlide(1)}>
                   <Database size={18} />
-                  <span>Ver Historial Completo</span>
+                  <span>Ver Historial</span>
                 </button>
                 <button className="btn btn-secondary" onClick={() => setActiveSlide(2)}>
                   <RefreshCw size={18} />
-                  <span>Sincronizar Terminal</span>
+                  <span>Sincronizar Biométrico</span>
+                </button>
+                <button className="btn btn-secondary" onClick={() => setActiveSlide(3)}>
+                  <Settings size={18} />
+                  <span>Parámetros de Horario</span>
                 </button>
               </div>
             </div>
@@ -225,6 +231,33 @@ export default function App() {
 
           <div style={{ width: '100%', maxWidth: '600px', margin: 'auto' }}>
             <Sincronizador onSincronizar={sincronizar} syncing={syncing} />
+          </div>
+        </section>
+
+        {/* SECCIÓN 04: Configuración de Parámetros */}
+        <section className="slide-section" style={{ justifyContent: 'flex-start' }}>
+          {/* BARRA SUPERIOR DE NAVEGACIÓN */}
+          <div className="top-nav-bar">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Fingerprint size={24} style={{ color: 'var(--primary)' }} />
+              <span style={{ fontWeight: 'bold', fontSize: '1rem', letterSpacing: '0.5px' }}>IPS CLINICAL HOUSE</span>
+            </div>
+            <div className="top-nav-profile">
+              <div className="top-nav-user-info">
+                <span className="top-nav-username">{usuario}</span>
+                <span className="top-nav-role">Administrador</span>
+              </div>
+              <div className="top-nav-avatar">
+                {usuario ? usuario.substring(0, 2).toUpperCase() : 'AD'}
+              </div>
+              <button onClick={handleLogout} className="btn btn-logout">
+                Cerrar Sesión
+              </button>
+            </div>
+          </div>
+
+          <div style={{ width: '100%', maxWidth: '850px', margin: 'auto' }}>
+            <ConfiguracionPanel onConfigSaved={() => cargarAsistencias()} />
           </div>
         </section>
       </div>

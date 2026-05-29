@@ -73,11 +73,21 @@ export function useAsistencias() {
     // Obtener número de empleados únicos
     const empleadosUnicos = new Set(asistencias.map(a => a.employeeNo).filter(Boolean)).size;
 
-    // Conteo de modos de verificación
+    // Conteo de modos de verificación y métricas de puntualidad
     let huellas = 0;
     let rostros = 0;
     let tarjetas = 0;
     let otros = 0;
+    let entradasATiempo = 0;
+    let entradasTarde = 0;
+    let totalEntradas = 0;
+    let totalRetrasoMinutos = 0;
+
+    let totalSalidas = 0;
+    let salidasTempranas = 0;
+    let salidasHorasExtras = 0;
+    let totalHorasExtrasMinutos = 0;
+    let totalSalidaTempranaMinutos = 0;
 
     asistencias.forEach((a) => {
       const modo = (a.modoVerificacion || '').toLowerCase();
@@ -90,6 +100,25 @@ export function useAsistencias() {
       } else {
         otros++;
       }
+
+      if (a.tipoRegistro === 'Entrada Mañana' || a.tipoRegistro === 'Entrada Tarde' || a.tipoRegistro === 'Entrada') {
+        totalEntradas++;
+        if (a.estado === 'Tarde') {
+          entradasTarde++;
+          totalRetrasoMinutos += (Number(a.retrasoMinutos) || 0);
+        } else if (a.estado === 'A tiempo') {
+          entradasATiempo++;
+        }
+      } else if (a.tipoRegistro === 'Salida Mañana' || a.tipoRegistro === 'Salida Tarde' || a.tipoRegistro === 'Salida') {
+        totalSalidas++;
+        if (a.estado === 'Salida Temprana') {
+          salidasTempranas++;
+          totalSalidaTempranaMinutos += (Number(a.salidaTempranaMinutos) || 0);
+        } else if (a.estado === 'Horas Extras') {
+          salidasHorasExtras++;
+          totalHorasExtrasMinutos += (Number(a.horasExtrasMinutos) || 0);
+        }
+      }
     });
 
     return {
@@ -100,6 +129,18 @@ export function useAsistencias() {
         rostros,
         tarjetas,
         otros
+      },
+      puntualidad: {
+        totalEntradas,
+        entradasATiempo,
+        entradasTarde,
+        totalRetrasoMinutos,
+        porcentajeTardanza: totalEntradas > 0 ? Math.round((entradasTarde / totalEntradas) * 100) : 0,
+        totalSalidas,
+        salidasTempranas,
+        salidasHorasExtras,
+        totalHorasExtrasMinutos,
+        totalSalidaTempranaMinutos
       }
     };
   }, [asistencias]);

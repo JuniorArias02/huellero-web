@@ -94,8 +94,8 @@ export function TablaAsistencia({ asistencias, loading }) {
               <th>Empleado</th>
               <th>Fecha y Hora</th>
               <th>Método de Acceso</th>
-              <th>Nº Lector</th>
-              <th>Nº Puerta</th>
+              <th>Tipo</th>
+              <th>Puntualidad</th>
             </tr>
           </thead>
           <tbody>
@@ -123,8 +123,57 @@ export function TablaAsistencia({ asistencias, loading }) {
                   <td className="font-bold">{item.nombre}</td>
                   <td>{formatearFecha(item.fechaHora)}</td>
                   <td>{renderModoVerificacion(item.modoVerificacion)}</td>
-                  <td className="text-center">{item.lectorNo}</td>
-                  <td className="text-center">{item.puertaNo}</td>
+                  <td>
+                    {item.tipoRegistro.includes('Entrada') ? (
+                      <span className="badge badge-purple">{item.tipoRegistro}</span>
+                    ) : item.tipoRegistro.includes('Salida') ? (
+                      <span className="badge" style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+                        {item.tipoRegistro}
+                      </span>
+                    ) : (
+                      <span className="badge badge-secondary" style={{ opacity: 0.7 }}>Marcación</span>
+                    )}
+                  </td>
+                  <td>
+                    {item.tipoRegistro.includes('Entrada') ? (
+                      item.estado === 'A tiempo' ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                          <span className="badge badge-success" style={{ width: 'fit-content' }}>A tiempo</span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Prog: {item.horaProgramada}</span>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                          <span className="badge" style={{ width: 'fit-content', background: 'rgba(239, 68, 68, 0.12)', color: '#f87171', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                            Tarde (+{item.retrasoMinutos} min)
+                          </span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Prog: {item.horaProgramada}</span>
+                        </div>
+                      )
+                    ) : item.tipoRegistro.includes('Salida') ? (
+                      item.estado === 'Horas Extras' ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                          <span className="badge" style={{ width: 'fit-content', background: 'rgba(16, 185, 129, 0.12)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                            Extra (+{item.horasExtrasMinutos} min)
+                          </span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Prog: {item.horaProgramada}</span>
+                        </div>
+                      ) : item.estado === 'Salida Temprana' ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                          <span className="badge" style={{ width: 'fit-content', background: 'rgba(244, 63, 94, 0.12)', color: '#fb7185', border: '1px solid rgba(244, 63, 94, 0.2)' }}>
+                            S. Temprana (-{item.salidaTempranaMinutos} min)
+                          </span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Prog: {item.horaProgramada}</span>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                          <span className="badge badge-secondary" style={{ width: 'fit-content', opacity: 0.8 }}>Normal</span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Prog: {item.horaProgramada}</span>
+                        </div>
+                      )
+                    ) : (
+                      <span className="badge badge-secondary" style={{ opacity: 0.4 }}>N/A</span>
+                    )}
+                  </td>
                 </tr>
               ))
             )}

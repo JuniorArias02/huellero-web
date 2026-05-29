@@ -41,6 +41,23 @@ export const asistenciaApi = {
     });
   },
 
+  /**
+   * Obtiene la configuración general y la lista de horarios de empleados.
+   */
+  obtenerConfiguracion: () => {
+    return request('/api/configuracion');
+  },
+
+  /**
+   * Guarda la configuración de la empresa y empleados.
+   */
+  guardarConfiguracion: (config) => {
+    return request('/api/configuracion', {
+      method: 'POST',
+      body: JSON.stringify(config)
+    });
+  },
+
   obtenerExcelUrl: (filtros = {}) => {
     const query = new URLSearchParams();
     if (filtros.fechaInicio) query.append('fecha_inicio', filtros.fechaInicio);

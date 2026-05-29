@@ -66,7 +66,7 @@ export function Login({ onLoginSuccess }) {
               <User className="input-icon" size={18} />
               <input
                 type="text"
-                placeholder="ejemplo: admin"
+                placeholder="perez"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
@@ -119,10 +119,7 @@ export function Login({ onLoginSuccess }) {
         </form>
 
         <div className="login-card-footer">
-          <p>Plataforma Protegida - Acceso Corporativo Limitado</p>
-          <p style={{ marginTop: '0.5rem', fontSize: '0.75rem', opacity: 0.8 }}>
-            Acceso temporal: <span style={{ color: 'var(--primary)', fontWeight: '600' }}>admin</span> / <span style={{ color: 'var(--primary)', fontWeight: '600' }}>900752620ch*</span>
-          </p>
+          <p></p>
         </div>
       </div>
     </div>
