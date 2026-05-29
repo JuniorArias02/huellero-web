@@ -52,9 +52,9 @@ export function Sincronizador({ onSincronizar, syncing }) {
   return (
     <div className="card-sync">
       <div className="card-sync-header">
-        <h2>Importación desde Biométrico</h2>
+        <h2>Importación desde Biométrico (Sede Principal)</h2>
         <p className="card-subtitle">
-          Descargue y sincronice los registros de marcación directamente desde el dispositivo terminal de asistencia.
+          Descargue y sincronice los registros de marcación directamente desde el dispositivo terminal de la Sede Principal.
         </p>
       </div>
 
@@ -132,7 +132,7 @@ export function Sincronizador({ onSincronizar, syncing }) {
           <h4>Instrucciones de Importación:</h4>
           <ul>
             <li>Seleccione el rango de fecha y hora requerido para la importación.</li>
-            <li>El sistema se conectará directamente con la dirección del terminal biométrico.</li>
+            <li>El sistema se conectará directamente con la dirección del terminal biométrico de la **Sede Principal**.</li>
             <li>Los nuevos registros de marcación se descargarán de forma automática sin duplicar marcas existentes.</li>
             <li>Para reportes mensuales extensos, el proceso puede tardar unos segundos. Por favor, espere la confirmación.</li>
           </ul>

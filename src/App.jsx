@@ -141,12 +141,12 @@ export default function App() {
                 <div className="biometric-scanner-ring">
                   <Fingerprint size={56} />
                 </div>
-                <h3>Terminal Biométrico</h3>
+                <h3>Biométrico - Sede Principal</h3>
                 <span className="device-status-badge">Conexión Activa</span>
                 <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.75rem', lineHeight: '1.4' }}>
                   Dirección IP: 190.145.135.122:8547 <br />
                   Protocolo: Hikvision ISAPI <br />
-                  Base de Datos: Interna
+                  Ubicación: Sede Principal
                 </p>
               </div>
             </div>
