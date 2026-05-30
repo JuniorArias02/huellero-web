@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Search, ChevronRight, UserCircle2, Clock, UploadCloud, Edit2, Check, X } from 'lucide-react';
+import { Users, Search, ChevronRight, UserCircle2, Clock, UploadCloud, Edit2, Check, X, Power, PowerOff } from 'lucide-react';
+import Swal from 'sweetalert2';
 import { asistenciaApi } from '../services/asistenciaApi';
 
 // Generador de colores consistentes basados en el nombre
@@ -86,12 +87,34 @@ const AvatarEmpleado = ({ emp, avatarColor, initials }) => {
       if (response.ok) {
         setImgError(false);
         setVersion(Date.now()); // Forzamos recarga de la imagen cifrada
+        Swal.fire({
+          icon: 'success',
+          title: '¡Foto actualizada!',
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 3000,
+          background: '#0f172a',
+          color: '#10b981'
+        });
       } else {
-        alert('Error al subir la foto');
+        Swal.fire({
+          icon: 'error',
+          title: 'Oops...',
+          text: 'Error al subir la foto',
+          background: '#0f172a',
+          color: '#f8fafc'
+        });
       }
     } catch (error) {
       console.error(error);
-      alert('Error de red al subir foto');
+      Swal.fire({
+        icon: 'error',
+        title: 'Error de red',
+        text: 'Error de red al intentar subir foto',
+        background: '#0f172a',
+        color: '#f8fafc'
+      });
     } finally {
       setIsUploading(false);
     }
@@ -154,12 +177,34 @@ const NombreEditable = ({ emp, onNombreChange }) => {
       if (response.ok) {
         onNombreChange(emp.employeeNo, nombre.trim());
         setIsEditing(false);
+        Swal.fire({
+          icon: 'success',
+          title: 'Nombre actualizado',
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 2000,
+          background: '#0f172a',
+          color: '#10b981'
+        });
       } else {
         const errorData = await response.json();
-        alert(errorData.error || 'Error al guardar el nombre en el dispositivo.');
+        Swal.fire({
+          icon: 'error',
+          title: 'Error del Biométrico',
+          text: errorData.error || 'No se pudo guardar el nombre',
+          background: '#0f172a',
+          color: '#f8fafc'
+        });
       }
     } catch (e) {
-      alert('Error de conexión al guardar.');
+      Swal.fire({
+        icon: 'error',
+        title: 'Falla de conexión',
+        text: 'Error de conexión al guardar.',
+        background: '#0f172a',
+        color: '#f8fafc'
+      });
     } finally {
       setIsSaving(false);
     }
@@ -205,6 +250,95 @@ const NombreEditable = ({ emp, onNombreChange }) => {
   );
 };
 
+const EstadoToggle = ({ emp, onEstadoChange }) => {
+  const [isSaving, setIsSaving] = useState(false);
+  const isActivo = emp.activo !== 0 && emp.activo !== false;
+
+  const toggleEstado = async () => {
+    const confirmMsg = isActivo 
+      ? `¿Estás seguro de DESHABILITAR a ${emp.nombre || emp.employeeNo} en el biométrico? No podrá marcar asistencia.`
+      : `¿Estás seguro de HABILITAR a ${emp.nombre || emp.employeeNo} en el biométrico? Podrá volver a marcar asistencia.`;
+      
+    const result = await Swal.fire({
+      title: isActivo ? '¿Deshabilitar empleado?' : '¿Habilitar empleado?',
+      text: confirmMsg,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: isActivo ? '#ef4444' : '#10b981',
+      cancelButtonColor: '#334155',
+      confirmButtonText: isActivo ? 'Sí, bloquearlo' : 'Sí, reactivarlo',
+      cancelButtonText: 'Cancelar',
+      background: '#0f172a',
+      color: '#f8fafc'
+    });
+
+    if (!result.isConfirmed) return;
+
+    setIsSaving(true);
+    try {
+      const response = await fetch(`${API_URL}/api/empleado/${emp.employeeNo}/estado`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('asistencia_token')}` 
+        },
+        body: JSON.stringify({ nombre: emp.nombre, activo: !isActivo })
+      });
+
+      if (response.ok) {
+        onEstadoChange(emp.employeeNo, isActivo ? 0 : 1);
+        Swal.fire({
+          title: isActivo ? 'Bloqueado' : 'Reactivado',
+          text: isActivo ? 'El usuario ha sido deshabilitado del biométrico.' : 'El usuario ya puede marcar de nuevo.',
+          icon: 'success',
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 3000,
+          background: '#0f172a',
+          color: '#10b981'
+        });
+      } else {
+        const errorData = await response.json();
+        Swal.fire({
+          icon: 'error',
+          title: 'Error de Dispositivo',
+          text: errorData.error || 'Error al cambiar estado.',
+          background: '#0f172a',
+          color: '#f8fafc'
+        });
+      }
+    } catch (e) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Sin conexión',
+        text: 'Error de conexión con el servidor.',
+        background: '#0f172a',
+        color: '#f8fafc'
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={toggleEstado}
+      disabled={isSaving}
+      title={isActivo ? "Deshabilitar personal (Se bloqueará en biométrico)" : "Habilitar personal (Se reactivará en biométrico)"}
+      className={`p-1.5 rounded-lg transition-all ${isSaving ? 'opacity-50 cursor-wait' : ''} ${isActivo ? 'text-emerald-400 hover:bg-rose-500/20 hover:text-rose-400' : 'text-rose-400 hover:bg-emerald-500/20 hover:text-emerald-400'}`}
+    >
+      {isSaving ? (
+        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+      ) : isActivo ? (
+        <Power size={15} />
+      ) : (
+        <PowerOff size={15} />
+      )}
+    </button>
+  );
+};
+
 export function DirectorioPanel() {
   const [empleados, setEmpleados] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -226,6 +360,10 @@ export function DirectorioPanel() {
 
   const handleNombreChange = (employeeNo, nuevoNombre) => {
     setEmpleados(prev => prev.map(e => e.employeeNo === employeeNo ? { ...e, nombre: nuevoNombre } : e));
+  };
+
+  const handleEstadoChange = (employeeNo, activo) => {
+    setEmpleados(prev => prev.map(e => e.employeeNo === employeeNo ? { ...e, activo } : e));
   };
 
   const empleadosFiltrados = empleados.filter(emp => 
@@ -278,20 +416,29 @@ export function DirectorioPanel() {
             const hasCustomRules = emp.jornadas !== null && emp.jornadas !== undefined;
             const avatarColor = generarColorAvatar(emp.nombre || emp.employeeNo);
             const initials = obtenerIniciales(emp.nombre);
+            const isActivo = emp.activo !== 0 && emp.activo !== false;
 
             return (
               <div 
                 key={emp.employeeNo} 
-                className="group relative bg-[#0a0f1d]/80 backdrop-blur-md border border-white/[0.05] hover:border-emerald-500/30 rounded-[1.5rem] shadow-xl hover:shadow-[0_20px_40px_rgba(16,185,129,0.15)] transition-all duration-300 hover:-translate-y-1.5 overflow-hidden flex flex-col text-left h-full"
+                className={`group relative bg-[#0a0f1d]/80 backdrop-blur-md border border-white/[0.05] hover:border-emerald-500/30 rounded-[1.5rem] shadow-xl hover:shadow-[0_20px_40px_rgba(16,185,129,0.15)] transition-all duration-300 hover:-translate-y-1.5 overflow-hidden flex flex-col text-left h-full ${!isActivo ? 'grayscale-[0.8] opacity-75 hover:grayscale-0 hover:opacity-100 border-rose-500/20 hover:border-rose-500/50' : ''}`}
               >
                 <AvatarEmpleado emp={emp} avatarColor={avatarColor} initials={initials} />
                 
                 {/* Info Container */}
                 <div className="w-full px-6 pb-6 pt-4 flex flex-col flex-1 relative z-10">
-                  <div className="flex items-center justify-between w-full mb-1">
-                    <span className="text-[10px] uppercase tracking-widest text-emerald-400/90 font-black">
-                      ID {emp.employeeNo}
-                    </span>
+                  <div className="flex items-center justify-between w-full mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] uppercase tracking-widest font-black ${isActivo ? 'text-emerald-400/90' : 'text-slate-400'}`}>
+                        ID {emp.employeeNo}
+                      </span>
+                      {!isActivo && (
+                        <span className="text-[9px] uppercase tracking-widest bg-rose-500/20 text-rose-400 px-2 py-0.5 rounded border border-rose-500/20 font-bold">
+                          Inactivo
+                        </span>
+                      )}
+                    </div>
+                    <EstadoToggle emp={emp} onEstadoChange={handleEstadoChange} />
                   </div>
                   
                   <NombreEditable emp={emp} onNombreChange={handleNombreChange} />
