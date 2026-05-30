@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Search, ChevronRight, UserCircle2, Clock } from 'lucide-react';
+import { Users, Search, ChevronRight, UserCircle2, Clock, UploadCloud } from 'lucide-react';
 import { asistenciaApi } from '../services/asistenciaApi';
 
 // Generador de colores consistentes basados en el nombre
@@ -31,23 +31,70 @@ const obtenerIniciales = (nombre) => {
 
 const AvatarEmpleado = ({ emp, avatarColor, initials }) => {
   const [imgError, setImgError] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [version, setVersion] = useState(Date.now());
   const token = localStorage.getItem('asistencia_token');
-  const fotoUrl = `http://localhost:8000/api/empleado/${emp.employeeNo}/foto?token=${token}`;
+  const fotoUrl = `http://localhost:8000/api/empleado/${emp.employeeNo}/foto?token=${token}&v=${version}`;
+
+  const handleUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('foto', file);
+
+    setIsUploading(true);
+    try {
+      const response = await fetch(`http://localhost:8000/api/empleado/${emp.employeeNo}/foto`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+      });
+
+      if (response.ok) {
+        setImgError(false);
+        setVersion(Date.now()); // Forzamos recarga de la imagen
+      } else {
+        alert('Error al subir la foto');
+      }
+    } catch (error) {
+      console.error(error);
+      alert('Error de red al subir foto');
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   return (
-    <div className={`relative w-24 h-24 rounded-full bg-gradient-to-br ${avatarColor} flex items-center justify-center shadow-lg border-4 border-[#0a0f1d] z-10 mb-5 group-hover:scale-105 transition-transform duration-300 overflow-hidden`}>
+    <div className={`relative w-full h-48 ${!imgError ? 'bg-[#0a0f1d]' : `bg-gradient-to-br ${avatarColor}`} flex items-center justify-center overflow-hidden group/avatar cursor-pointer`}>
+      <input type="file" accept="image/jpeg, image/png, image/webp" className="hidden" id={`upload-${emp.employeeNo}`} onChange={handleUpload} />
+      
+      <label htmlFor={`upload-${emp.employeeNo}`} className="absolute inset-0 z-20 flex items-center justify-center bg-black/60 opacity-0 group-hover/avatar:opacity-100 transition-opacity cursor-pointer flex-col gap-2">
+        {isUploading ? (
+           <div className="w-6 h-6 border-2 border-white/20 border-t-emerald-500 rounded-full animate-spin"></div>
+        ) : (
+           <>
+             <UploadCloud size={28} className="text-white" />
+             <span className="text-[10px] font-bold text-white uppercase tracking-widest">Cambiar Foto</span>
+           </>
+        )}
+      </label>
+
       {!imgError ? (
         <img 
           src={fotoUrl} 
           alt={emp.nombre} 
-          className="w-full h-full object-cover" 
+          className="w-full h-full object-cover transition-transform duration-700 group-hover/avatar:scale-110" 
           onError={() => setImgError(true)} 
         />
       ) : (
-        <span className="text-3xl font-black text-white drop-shadow-md tracking-tighter">
+        <span className="text-5xl font-black text-white drop-shadow-lg tracking-tighter transition-transform duration-500 group-hover/avatar:scale-110">
           {initials}
         </span>
       )}
+
+      {/* Degradado para fundir la imagen con la tarjeta */}
+      <div className="absolute bottom-0 left-0 w-full h-24 bg-gradient-to-t from-[#0a0f1d] to-transparent pointer-events-none" />
     </div>
   );
 };
@@ -125,31 +172,28 @@ export function DirectorioPanel() {
             return (
               <div 
                 key={emp.employeeNo} 
-                className="group relative bg-[#0a0f1d]/60 backdrop-blur-md border border-white/[0.05] hover:border-emerald-500/30 rounded-[2rem] p-6 shadow-xl hover:shadow-[0_20px_40px_rgba(16,185,129,0.15)] transition-all duration-300 hover:-translate-y-1.5 overflow-hidden flex flex-col items-center text-center"
+                className="group relative bg-[#0a0f1d]/80 backdrop-blur-md border border-white/[0.05] hover:border-emerald-500/30 rounded-[1.5rem] shadow-xl hover:shadow-[0_20px_40px_rgba(16,185,129,0.15)] transition-all duration-300 hover:-translate-y-1.5 overflow-hidden flex flex-col text-left h-full"
               >
-                {/* Decorative Glow */}
-                <div className={`absolute top-0 left-0 w-full h-32 bg-gradient-to-b ${avatarColor} opacity-5 group-hover:opacity-15 transition-opacity duration-500 pointer-events-none`} />
-
                 <AvatarEmpleado emp={emp} avatarColor={avatarColor} initials={initials} />
                 
-                {/* Status Indicator (Ahora por fuera para que no se oculte con la imagen) */}
-                <div className="absolute top-[100px] right-[40%] translate-x-12 w-6 h-6 bg-[#0a0f1d] rounded-full flex items-center justify-center z-20">
-                  <div className="w-3.5 h-3.5 bg-emerald-400 rounded-full shadow-[0_0_10px_rgba(52,211,153,0.8)]" />
-                </div>
+                {/* Info Container */}
+                <div className="w-full px-6 pb-6 pt-4 flex flex-col flex-1 relative z-10">
+                  <div className="flex items-center justify-between w-full mb-1">
+                    <span className="text-[10px] uppercase tracking-widest text-emerald-400/90 font-black">
+                      ID {emp.employeeNo}
+                    </span>
+                  </div>
+                  
+                  <h3 className="text-lg font-bold text-white leading-tight mb-5 group-hover:text-emerald-300 transition-colors line-clamp-2">
+                    {emp.nombre || 'Personal No Identificado'}
+                  </h3>
 
-                {/* Info */}
-                <h3 className="text-lg font-bold text-white truncate w-full mb-1 group-hover:text-emerald-300 transition-colors">
-                  {emp.nombre || 'Sin Nombre'}
-                </h3>
-                <p className="font-mono text-xs text-slate-400 bg-white/5 px-3 py-1 rounded-full mb-5 border border-white/5">
-                  ID: {emp.employeeNo}
-                </p>
-
-                {/* Footer Badges */}
-                <div className="w-full mt-auto pt-4 border-t border-white/5 flex flex-col gap-2">
-                  <div className={`flex items-center justify-center gap-1.5 text-[10px] font-extrabold uppercase tracking-widest px-2 py-1.5 rounded-lg border ${hasCustomRules ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'bg-slate-500/10 text-slate-400 border-slate-500/20'}`}>
-                    <Clock size={12} />
-                    <span>{hasCustomRules ? 'Horario Especial' : 'Horario Global'}</span>
+                  {/* Footer Badges */}
+                  <div className="w-full mt-auto pt-4 border-t border-white/5">
+                    <div className={`inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-widest px-2.5 py-1.5 rounded-lg border transition-colors ${hasCustomRules ? 'bg-purple-500/10 text-purple-400 border-purple-500/20 group-hover:border-purple-500/40' : 'bg-slate-500/10 text-slate-400 border-slate-500/20 group-hover:border-slate-500/40'}`}>
+                      <Clock size={12} />
+                      <span>{hasCustomRules ? 'Horario Especial' : 'Jornada Global'}</span>
+                    </div>
                   </div>
                 </div>
                 

@@ -18,6 +18,7 @@ export function ConfiguracionPanel({ onConfigSaved }) {
   const [generalConfig, setGeneralConfig] = useState({
     jornadas: [],
     tolerancia_minutos: 20,
+    tolerancia_extra_minutos: 20,
   });
   const [empleados, setEmpleados] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -33,7 +34,8 @@ export function ConfiguracionPanel({ onConfigSaved }) {
       const data = await asistenciaApi.obtenerConfiguracion();
       setGeneralConfig({
         jornadas: data.jornadas || [],
-        tolerancia_minutos: Number(data.tolerancia_minutos) ?? 20,
+        tolerancia_minutos: Number(data.tolerancia_minutos) || 20,
+        tolerancia_extra_minutos: Number(data.tolerancia_extra_minutos) || 20,
       });
       setEmpleados(data.empleados || []);
     } catch (err) {
@@ -228,11 +230,20 @@ export function ConfiguracionPanel({ onConfigSaved }) {
                 <CalendarDays size={24} className="text-indigo-400" />
                 Jornadas Globales (Por Defecto)
               </h3>
-              <div className="flex items-center gap-3 bg-black/40 px-4 py-2 rounded-xl border border-white/5">
-                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Tolerancia Global</label>
-                <div className="flex items-center gap-2">
-                  <input type="number" value={generalConfig.tolerancia_minutos} onChange={(e) => setGeneralConfig(p => ({...p, tolerancia_minutos: Number(e.target.value)}))} className="w-16 bg-transparent text-white text-center font-bold focus:outline-none border-b border-indigo-500/50" />
-                  <span className="text-xs font-bold text-slate-500">Min</span>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-3 bg-black/40 px-4 py-2 rounded-xl border border-white/5">
+                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Tolerancia Tarde</label>
+                  <div className="flex items-center gap-2">
+                    <input type="number" value={generalConfig.tolerancia_minutos} onChange={(e) => setGeneralConfig(p => ({...p, tolerancia_minutos: Number(e.target.value)}))} className="w-12 bg-transparent text-white text-center font-bold focus:outline-none border-b border-indigo-500/50" />
+                    <span className="text-xs font-bold text-slate-500">Min</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 bg-black/40 px-4 py-2 rounded-xl border border-white/5">
+                  <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">Tolerancia Extras</label>
+                  <div className="flex items-center gap-2">
+                    <input type="number" value={generalConfig.tolerancia_extra_minutos} onChange={(e) => setGeneralConfig(p => ({...p, tolerancia_extra_minutos: Number(e.target.value)}))} className="w-12 bg-transparent text-white text-center font-bold focus:outline-none border-b border-purple-500/50" />
+                    <span className="text-xs font-bold text-slate-500">Min</span>
+                  </div>
                 </div>
               </div>
             </div>
