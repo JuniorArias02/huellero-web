@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Search, ChevronRight, UserCircle2, Clock, UploadCloud, Edit2, Check, X, Power, PowerOff } from 'lucide-react';
+import { Users, Search, ChevronRight, UserCircle2, Clock, UploadCloud, Edit2, Check, X, Power, PowerOff, RefreshCw } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { asistenciaApi } from '../services/asistenciaApi';
 
@@ -342,21 +342,63 @@ const EstadoToggle = ({ emp, onEstadoChange }) => {
 export function DirectorioPanel() {
   const [empleados, setEmpleados] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [busqueda, setBusqueda] = useState('');
 
+  const cargarDatos = async () => {
+    try {
+      const data = await asistenciaApi.obtenerConfiguracion();
+      setEmpleados(data.empleados || []);
+    } catch (err) {
+      console.error("Error al cargar empleados", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const cargarDatos = async () => {
-      try {
-        const data = await asistenciaApi.obtenerConfiguracion();
-        setEmpleados(data.empleados || []);
-      } catch (err) {
-        console.error("Error al cargar empleados", err);
-      } finally {
-        setLoading(false);
-      }
-    };
     cargarDatos();
   }, []);
+
+  const handleSyncPersonal = async () => {
+    setIsSyncing(true);
+    try {
+      const response = await fetch(`${API_URL}/api/empleado/sincronizar`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('asistencia_token')}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        Swal.fire({
+          icon: 'success',
+          title: 'Sincronización Exitosa',
+          text: `Se encontraron ${data.total_sincronizados} usuarios en el dispositivo.`,
+          background: '#0f172a',
+          color: '#10b981'
+        });
+        await cargarDatos();
+      } else {
+        const err = await response.json();
+        Swal.fire({
+          icon: 'error',
+          title: 'Fallo al sincronizar',
+          text: err.error || 'El biométrico rechazó la conexión',
+          background: '#0f172a',
+          color: '#f8fafc'
+        });
+      }
+    } catch (e) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error de Red',
+        text: 'No se pudo contactar con el backend',
+        background: '#0f172a',
+        color: '#f8fafc'
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const handleNombreChange = (employeeNo, nuevoNombre) => {
     setEmpleados(prev => prev.map(e => e.employeeNo === employeeNo ? { ...e, nombre: nuevoNombre } : e));
@@ -384,8 +426,18 @@ export function DirectorioPanel() {
           </p>
         </div>
         
-        {/* Barra de búsqueda */}
-        <div className="relative w-full md:w-[350px] shrink-0">
+        <div className="flex flex-col gap-3 md:items-end">
+          <button 
+            onClick={handleSyncPersonal}
+            disabled={isSyncing}
+            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 hover:shadow-[0_0_15px_rgba(16,185,129,0.2)] transition-all text-sm font-bold disabled:opacity-50 w-full md:w-auto"
+          >
+            <RefreshCw size={16} className={isSyncing ? 'animate-spin' : ''} />
+            {isSyncing ? 'Buscando en biométrico...' : 'Sincronizar Todo el Personal'}
+          </button>
+
+          {/* Barra de búsqueda */}
+          <div className="relative w-full md:w-[350px] shrink-0">
           <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
           <input 
             type="text" 
@@ -394,6 +446,7 @@ export function DirectorioPanel() {
             onChange={(e) => setBusqueda(e.target.value)}
             className="w-full bg-black/40 border border-white/10 text-white rounded-2xl pl-12 pr-4 py-3.5 focus:outline-none focus:border-emerald-500/50 focus:ring-2 focus:ring-emerald-500/20 transition-all font-medium placeholder-slate-500 shadow-inner"
           />
+          </div>
         </div>
       </div>
 
