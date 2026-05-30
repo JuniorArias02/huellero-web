@@ -1,5 +1,68 @@
-import React from 'react';
-import { Menu, LogOut, CheckCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Menu, LogOut, CheckCircle, Timer } from 'lucide-react';
+
+const SessionTimer = () => {
+  const [timeLeft, setTimeLeft] = useState('');
+  const [isExpiring, setIsExpiring] = useState(false);
+
+  useEffect(() => {
+    const obtenerExpiracion = () => {
+      const token = localStorage.getItem('asistencia_token');
+      if (!token) return 0;
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        return payload.exp * 1000;
+      } catch (e) {
+        return 0;
+      }
+    };
+
+    let exp = obtenerExpiracion();
+    if (exp === 0) return;
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const diff = exp - now;
+      
+      if (diff <= 0) {
+        clearInterval(interval);
+        window.dispatchEvent(new Event('auth-logout'));
+        return;
+      }
+      
+      const hours = Math.floor(diff / 3600000);
+      const mins = Math.floor((diff % 3600000) / 60000);
+      const secs = Math.floor((diff % 60000) / 1000);
+      
+      if (hours > 0) {
+        setTimeLeft(`${hours}h ${mins.toString().padStart(2, '0')}m`);
+      } else {
+        setTimeLeft(`${mins}:${secs.toString().padStart(2, '0')} min`);
+      }
+      setIsExpiring(hours === 0 && mins < 5); // Alerta visual en los últimos 5 min
+    }, 1000);
+
+    const handleRefreshed = () => {
+      exp = obtenerExpiracion();
+    };
+
+    window.addEventListener('auth-token-refreshed', handleRefreshed);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('auth-token-refreshed', handleRefreshed);
+    };
+  }, []);
+
+  if (!timeLeft) return null;
+
+  return (
+    <div className={`hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold transition-colors ${isExpiring ? 'bg-rose-500/10 text-rose-400 border-rose-500/30 shadow-[0_0_15px_rgba(244,63,94,0.3)] animate-pulse' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'}`}>
+      <Timer size={14} />
+      <span>{timeLeft}</span>
+    </div>
+  );
+};
 
 export function Navbar({ usuario, onLogout, toggleSidebar }) {
   return (
@@ -23,6 +86,8 @@ export function Navbar({ usuario, onLogout, toggleSidebar }) {
           <CheckCircle size={14} />
           <span>Conexión Biométrico Activa</span>
         </div>
+
+        <SessionTimer />
       </div>
 
       {/* Right part: User Info & Logout */}

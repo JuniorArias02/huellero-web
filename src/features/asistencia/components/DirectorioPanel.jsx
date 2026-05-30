@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Search, ChevronRight, UserCircle2, Clock, UploadCloud } from 'lucide-react';
+import { Users, Search, ChevronRight, UserCircle2, Clock, UploadCloud, Edit2, Check, X } from 'lucide-react';
 import { asistenciaApi } from '../services/asistenciaApi';
 
 // Generador de colores consistentes basados en el nombre
@@ -29,12 +29,44 @@ const obtenerIniciales = (nombre) => {
   return nombre.substring(0, 2).toUpperCase();
 };
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 const AvatarEmpleado = ({ emp, avatarColor, initials }) => {
   const [imgError, setImgError] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [version, setVersion] = useState(Date.now());
+  const [fotoUrl, setFotoUrl] = useState(null);
   const token = localStorage.getItem('asistencia_token');
-  const fotoUrl = `http://localhost:8000/api/empleado/${emp.employeeNo}/foto?token=${token}&v=${version}`;
+
+  useEffect(() => {
+    let objectUrl = null;
+    const fetchFoto = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/empleado/${emp.employeeNo}/foto`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (response.ok) {
+          if (response.status === 204) {
+            setImgError(true);
+            return;
+          }
+          const blob = await response.blob();
+          objectUrl = URL.createObjectURL(blob);
+          setFotoUrl(objectUrl);
+          setImgError(false);
+        } else {
+          setImgError(true);
+        }
+      } catch (e) {
+        setImgError(true);
+      }
+    };
+    fetchFoto();
+    
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [emp.employeeNo, token, version]);
 
   const handleUpload = async (e) => {
     const file = e.target.files[0];
@@ -45,7 +77,7 @@ const AvatarEmpleado = ({ emp, avatarColor, initials }) => {
 
     setIsUploading(true);
     try {
-      const response = await fetch(`http://localhost:8000/api/empleado/${emp.employeeNo}/foto`, {
+      const response = await fetch(`${API_URL}/api/empleado/${emp.employeeNo}/foto`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
@@ -53,7 +85,7 @@ const AvatarEmpleado = ({ emp, avatarColor, initials }) => {
 
       if (response.ok) {
         setImgError(false);
-        setVersion(Date.now()); // Forzamos recarga de la imagen
+        setVersion(Date.now()); // Forzamos recarga de la imagen cifrada
       } else {
         alert('Error al subir la foto');
       }
@@ -99,6 +131,80 @@ const AvatarEmpleado = ({ emp, avatarColor, initials }) => {
   );
 };
 
+const NombreEditable = ({ emp, onNombreChange }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [nombre, setNombre] = useState(emp.nombre || '');
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    if (nombre.trim() === '') return setIsEditing(false);
+    if (nombre === emp.nombre) return setIsEditing(false);
+
+    setIsSaving(true);
+    try {
+      const response = await fetch(`${API_URL}/api/empleado/${emp.employeeNo}/nombre`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('asistencia_token')}` 
+        },
+        body: JSON.stringify({ nombre: nombre.trim() })
+      });
+
+      if (response.ok) {
+        onNombreChange(emp.employeeNo, nombre.trim());
+        setIsEditing(false);
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || 'Error al guardar el nombre en el dispositivo.');
+      }
+    } catch (e) {
+      alert('Error de conexión al guardar.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (isEditing) {
+    return (
+      <div className="flex items-center gap-2 mb-5 w-full">
+        <input 
+          autoFocus
+          type="text" 
+          value={nombre}
+          onChange={(e) => setNombre(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+          className="flex-1 bg-black/40 border border-emerald-500/50 text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none"
+          disabled={isSaving}
+        />
+        {isSaving ? (
+          <div className="w-5 h-5 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+        ) : (
+          <div className="flex flex-col gap-1">
+            <button onClick={handleSave} className="text-emerald-400 hover:bg-emerald-500/20 p-1 rounded"><Check size={14} /></button>
+            <button onClick={() => { setNombre(emp.nombre || ''); setIsEditing(false); }} className="text-rose-400 hover:bg-rose-500/20 p-1 rounded"><X size={14} /></button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="group/name flex items-start justify-between w-full mb-5 gap-2">
+      <h3 className="text-lg font-bold text-white leading-tight group-hover:text-emerald-300 transition-colors line-clamp-2">
+        {emp.nombre || 'Personal No Identificado'}
+      </h3>
+      <button 
+        onClick={() => setIsEditing(true)} 
+        className="opacity-0 group-hover/name:opacity-100 p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-all shrink-0"
+        title="Editar nombre en el Biométrico"
+      >
+        <Edit2 size={16} />
+      </button>
+    </div>
+  );
+};
+
 export function DirectorioPanel() {
   const [empleados, setEmpleados] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -117,6 +223,10 @@ export function DirectorioPanel() {
     };
     cargarDatos();
   }, []);
+
+  const handleNombreChange = (employeeNo, nuevoNombre) => {
+    setEmpleados(prev => prev.map(e => e.employeeNo === employeeNo ? { ...e, nombre: nuevoNombre } : e));
+  };
 
   const empleadosFiltrados = empleados.filter(emp => 
     (emp.nombre || '').toLowerCase().includes(busqueda.toLowerCase()) || 
@@ -184,9 +294,7 @@ export function DirectorioPanel() {
                     </span>
                   </div>
                   
-                  <h3 className="text-lg font-bold text-white leading-tight mb-5 group-hover:text-emerald-300 transition-colors line-clamp-2">
-                    {emp.nombre || 'Personal No Identificado'}
-                  </h3>
+                  <NombreEditable emp={emp} onNombreChange={handleNombreChange} />
 
                   {/* Footer Badges */}
                   <div className="w-full mt-auto pt-4 border-t border-white/5">

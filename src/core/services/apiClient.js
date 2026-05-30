@@ -12,8 +12,37 @@ if (API_URL && !API_URL.startsWith('http://') && !API_URL.startsWith('https://')
  * @returns {Promise<any>} Respuesta procesada
  */
 export async function request(endpoint, options = {}) {
+  let token = localStorage.getItem('asistencia_token');
+  
+  // Silent Refresh: Si quedan menos de 10 minutos de sesión y el usuario realiza una acción
+  if (token && endpoint !== '/api/refresh') {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const exp = payload.exp * 1000;
+      const diezMinutos = 10 * 60 * 1000;
+      
+      if (exp - Date.now() < diezMinutos && exp - Date.now() > 0) {
+        const refreshUrl = `${API_URL}/api/refresh`;
+        const res = await fetch(refreshUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          localStorage.setItem('asistencia_token', data.token);
+          token = data.token; // Usar el nuevo token en la petición actual
+          window.dispatchEvent(new Event('auth-token-refreshed'));
+        }
+      }
+    } catch (e) {
+      console.warn('Error en silent refresh:', e);
+    }
+  }
+
   const url = `${API_URL}${endpoint}`;
-  const token = localStorage.getItem('asistencia_token');
   const headers = {
     'Content-Type': 'application/json',
     ...options.headers,
